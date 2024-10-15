@@ -25,16 +25,26 @@ jobs:
         uses: actions/cache@v2
         with:
           path: vendor
-          key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }} # Use double asterisks for broader matching
+          key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
           restore-keys: ${{ runner.os }}-composer-
       - run: composer install --prefer-dist --no-progress --no-suggest # Optimize installation
       - run: composer validate --strict # Validate composer.json with strict mode
+      
+      # Check for necessary files before running tests and analysis
+      - name: Check for necessary files
+        id: check_files
+        uses: thebinaryfelix/check-file-existence-action@v1
+        with:
+          files: 'composer.json, composer.lock, phpstan.neon'
+
       - name: Run PHPUnit
-        run: vendor/bin/phpunit --log-junit junit.xml || true # Prevent failure if tests fail (optional)
-        if: ${{ fileExists('composer.json') && fileExists('composer.lock') }}
+        run: vendor/bin/phpunit --log-junit junit.xml
+        if: steps.check_files.outputs.exists == 'true'
+
       - name: Static Analysis (PHPStan)
-        run: vendor/bin/phpstan analyse || true # Prevent failure if analysis fails (optional)
-        if: ${{ fileExists('phpstan.neon') }}
+        run: vendor/bin/phpstan analyse
+        if: steps.check_files.outputs.exists == 'true'
+
       - name: Upload test results
         uses: actions/upload-artifact@v2
         with:
