@@ -30,23 +30,26 @@ jobs:
       - run: composer install --prefer-dist --no-progress --no-suggest # Optimize installation
       - run: composer validate --strict # Validate composer.json with strict mode
       
-      # Check for necessary files before running tests and analysis
+      # Check for necessary files
       - name: Check for necessary files
         id: check_files
-        uses: thebinaryfelix/check-file-existence-action@v1
-        with:
-          files: 'composer.json, composer.lock, phpstan.neon'
+        run: |
+          if [ -f "composer.json" ] && [ -f "composer.lock" ] && [ -f "phpstan.neon" ]; then
+            echo "files_exist=true" >> $GITHUB_ENV
+          else
+            echo "files_exist=false" >> $GITHUB_ENV
+          fi
 
       - name: Run PHPUnit
         run: vendor/bin/phpunit --log-junit junit.xml
-        if: steps.check_files.outputs.exists == 'true'
+        if: env.files_exist == 'true'
 
       - name: Static Analysis (PHPStan)
         run: vendor/bin/phpstan analyse
-        if: steps.check_files.outputs.exists == 'true'
+        if: env.files_exist == 'true'
 
       - name: Upload test results
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4  # Updated to v4
         with:
           name: junit-results
           path: junit.xml
