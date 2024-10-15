@@ -1,0 +1,39 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        php-version: ['7.4', '8.0', '8.1']
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php-version }}
+      - name: Cache Composer dependencies
+        uses: actions/cache@v2
+        with:
+          path: vendor
+          key: ${{ runner.os }}-composer-${{ hashFiles('composer.lock') }}
+          restore-keys: ${{ runner.os }}-composer-
+      - run: composer install
+      - run: composer validate
+      - name: Run PHPUnit
+        run: vendor/bin/phpunit --log-junit junit.xml
+      - name: Static Analysis (PHPStan)
+        run: vendor/bin/phpstan analyse
+      - name: Upload test results
+        uses: actions/upload-artifact@v2
+        with:
+          name: junit-results
+          path: junit.xml
